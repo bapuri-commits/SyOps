@@ -1,0 +1,19 @@
+# QuickDrop systemd 서비스 파일
+# 서버 위치: /etc/systemd/system/quickdrop.service
+# 이 파일은 VPS 실제 설정의 Git 관리 사본이다.
+
+[Unit]
+Description=QuickDrop File Cloud
+After=network.target
+
+[Service]
+Type=simple
+User=dev
+WorkingDirectory=/opt/apps/quickdrop/backend
+EnvironmentFile=/opt/envs/quickdrop.env
+ExecStart=/opt/apps/quickdrop/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8200
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
