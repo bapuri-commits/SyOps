@@ -1,0 +1,15 @@
+[project]
+name = "syops-backend"
+version = "0.1.0"
+description = "SyOps 서비스 상태 API"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "httpx>=0.28",
+    "psutil>=6.0",
+    "pydantic-settings>=2.7",
+]
+
+[project.optional-dependencies]
+dev = ["ruff"]

@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-PROJECT="${1:?프로젝트명을 지정하세요 (quickdrop|news-agent|syops)}"
+PROJECT="${1:?프로젝트명을 지정하세요 (quickdrop|news-agent|syops|nginx)}"
 ACTION="${2:-pull}"
 
 APPS_DIR="/opt/apps"
@@ -28,10 +28,26 @@ case "$PROJECT" in
   syops)
     cd "$APPS_DIR/syops"
     git pull
+
+    # Backend venv update
+    cd backend
+    if [ ! -d .venv ]; then
+      python3 -m venv .venv
+    fi
+    .venv/bin/pip install -q -e .
+    cd ..
+
+    # Frontend build
+    cd frontend
+    npm ci --silent
+    npm run build
+    cd ..
+
     if [ "$ACTION" = "restart" ]; then
       sudo systemctl restart syops
-      echo "[OK] syops 재시작 완료"
+      echo "[OK] syops 백엔드 재시작 완료"
     fi
+    echo "[OK] syops 프론트엔드 빌드 완료"
     ;;
   nginx)
     sudo nginx -t && sudo systemctl reload nginx

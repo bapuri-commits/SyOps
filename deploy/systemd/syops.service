@@ -1,0 +1,19 @@
+# SyOps Backend systemd 서비스 파일
+# 서버 위치: /etc/systemd/system/syops.service
+# 이 파일은 VPS 실제 설정의 Git 관리 사본이다.
+
+[Unit]
+Description=SyOps Management API
+After=network.target
+
+[Service]
+Type=simple
+User=dev
+WorkingDirectory=/opt/apps/syops
+EnvironmentFile=/opt/envs/syops.env
+ExecStart=/opt/apps/syops/backend/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8300
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
