@@ -13,3 +13,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["ruff"]
+
+[tool.setuptools]
+py-modules = []
+packages = []
