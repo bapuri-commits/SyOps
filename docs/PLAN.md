@@ -1,6 +1,6 @@
 # SyOps — 프로젝트 계획
 
-> 최종 갱신: 2026-03-09
+> 최종 갱신: 2026-03-11
 
 ## 프로젝트 목적
 
@@ -49,9 +49,9 @@
 
 ## 기능 설계
 
-### Phase 1 — 통합 랜딩 페이지 (MVP)
+### Phase 1 — 통합 랜딩 페이지 (MVP) ✅ 완료
 
-현재 `syworkspace.cloud` → `drop.syworkspace.cloud` 리다이렉트인 것을 서비스 포털로 교체.
+`syworkspace.cloud`에 서비스 포털 배포 완료.
 
 **기능:**
 - 서비스 카드 목록 (QuickDrop, News_Agent 등)
@@ -67,7 +67,7 @@
 - `syworkspace.cloud` nginx 설정을 정적 파일 서빙으로 변경
 - SyOps 백엔드 API는 별도 포트로 프록시
 
-### Phase 2 — 서비스 상태 API
+### Phase 2 — 서비스 상태 API ✅ 완료
 
 **엔드포인트:**
 - `GET /api/health` — 전체 서비스 헬스체크
@@ -84,7 +84,7 @@
 - 공개 API: `/api/health` (서비스 상태만)
 - 보호 API: `/api/metrics`, `/api/services/*` (비밀번호 인증)
 
-### Phase 3 — 관리 대시보드
+### Phase 3 — 관리 대시보드 ✅ 완료
 
 **기능 (인증 필요):**
 - 서버 리소스 실시간 모니터링 차트
@@ -96,10 +96,10 @@
 **연계:**
 - DevOps 로드맵 Stage 9 (모니터링 & 로깅)와 연결
 
-### Phase 4 — CI/CD + 자동화
+### Phase 4 — CI/CD + 자동화 ✅ 완료
 
-- GitHub Actions: push → 자동 빌드 + VPS 배포
-- 다른 프로젝트에도 CI/CD 파이프라인 제공
+- GitHub Actions: push → CI (빌드+린트) → CD (SSH 배포+헬스체크)
+- systemd 서비스 등록, nginx 보안 헤더 적용
 - DevOps 로드맵 Stage 6과 연결
 
 ---
@@ -134,15 +134,12 @@
 ## 구현 우선순위
 
 ```
-Phase 1: 통합 랜딩 페이지 (MVP)
-   ↓ 가장 먼저 — syworkspace.cloud 루트의 존재 의미
-Phase 2: 서비스 상태 API
-   ↓ 랜딩 페이지에 실시간 상태 표시
-Phase 3: 관리 대시보드
-   ↓ 인증 + 상세 모니터링
-Phase 4: CI/CD + 자동화
-   ↓ 배포 자동화
+Phase 1: 통합 랜딩 페이지 (MVP) ✅
+Phase 2: 서비스 상태 API         ✅
+Phase 3: 관리 대시보드            ✅
+Phase 4: CI/CD + 자동화          ✅ (GitHub Secrets 수동 설정 필요)
 ```
+VPS 배포 완료: 2026-03-11
 
 ---
 
