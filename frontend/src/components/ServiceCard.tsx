@@ -1,23 +1,39 @@
 import type { ServiceInfo, ServiceHealth } from "../types";
 import StatusBadge from "./StatusBadge";
+import DeployBadge from "./DeployBadge";
 
 interface Props {
   service: ServiceInfo;
-  health: ServiceHealth;
+  health?: ServiceHealth;
 }
 
 export default function ServiceCard({ service, health }: Props) {
-  const cardClass =
-    "group block rounded-2xl border border-border-subtle bg-surface-card p-6 transition-all duration-200 hover:border-accent/40 hover:bg-surface-hover hover:shadow-lg hover:shadow-accent/5";
+  const isLive = service.deployStatus === "live";
+
+  const cardClass = isLive
+    ? "group block rounded-2xl border border-border-subtle bg-surface-card p-6 transition-all duration-200 hover:border-accent/40 hover:bg-surface-hover hover:shadow-lg hover:shadow-accent/5"
+    : "group block rounded-2xl border border-border-subtle bg-surface-card/50 p-6 opacity-75";
 
   const inner = (
     <>
       <div className="flex items-start justify-between">
         <span className="text-3xl">{service.icon}</span>
-        <StatusBadge status={health.status} />
+        <div className="flex items-center gap-2">
+          {isLive && health ? (
+            <StatusBadge status={health.status} />
+          ) : (
+            <DeployBadge status={service.deployStatus} />
+          )}
+        </div>
       </div>
 
-      <h3 className="mt-4 text-lg font-semibold text-white group-hover:text-accent transition-colors">
+      <h3
+        className={`mt-4 text-lg font-semibold transition-colors ${
+          isLive
+            ? "text-white group-hover:text-accent"
+            : "text-slate-300"
+        }`}
+      >
         {service.name}
       </h3>
 
@@ -25,24 +41,39 @@ export default function ServiceCard({ service, health }: Props) {
         {service.description}
       </p>
 
-      {service.url ? (
+      {isLive && service.url ? (
         <div className="mt-5 flex items-center gap-1 text-sm font-medium text-accent-dim group-hover:text-accent transition-colors">
           바로가기
-          <svg className="h-4 w-4 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+          <svg
+            className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+            />
           </svg>
         </div>
+      ) : isLive ? (
+        <div className="mt-5 text-sm text-slate-500">내부 서비스</div>
       ) : (
-        <div className="mt-5 text-sm text-slate-500">
-          내부 서비스
-        </div>
+        <div className="mt-5 text-sm text-slate-600">서비스 준비 중</div>
       )}
     </>
   );
 
-  if (service.url) {
+  if (isLive && service.url) {
     return (
-      <a href={service.url} target="_blank" rel="noopener noreferrer" className={cardClass}>
+      <a
+        href={service.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cardClass}
+      >
         {inner}
       </a>
     );

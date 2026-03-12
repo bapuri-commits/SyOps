@@ -7,7 +7,7 @@
 
 set -euo pipefail
 
-PROJECT="${1:?프로젝트명을 지정하세요 (quickdrop|news-agent|syops|nginx)}"
+PROJECT="${1:?프로젝트명을 지정하세요 (quickdrop|news-agent|syops|nginx|bottycoon-bot|voca-drill|lesson-assist|school-sync|aram-bot|the-agent)}"
 ACTION="${2:-pull}"
 
 APPS_DIR="/opt/apps"
@@ -60,13 +60,19 @@ case "$PROJECT" in
     fi
     echo "[OK] syops 프론트엔드 빌드 완료"
     ;;
+  bottycoon-bot)
+    deploy_docker_service "$APPS_DIR/bottycoon-bot"
+    ;;
+  voca-drill|lesson-assist|school-sync|aram-bot|the-agent)
+    deploy_docker_service "$APPS_DIR/$PROJECT"
+    ;;
   nginx)
     sudo nginx -t && sudo systemctl reload nginx
     echo "[OK] nginx 설정 리로드 완료"
     ;;
   *)
     echo "[ERROR] 알 수 없는 프로젝트: $PROJECT"
-    echo "사용 가능: quickdrop, news-agent, syops, nginx"
+    echo "사용 가능: quickdrop, bottycoon-bot, news-agent, syops, nginx, voca-drill, lesson-assist, school-sync, aram-bot, the-agent"
     exit 1
     ;;
 esac

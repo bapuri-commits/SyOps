@@ -2,50 +2,33 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from dataclasses import dataclass
-from enum import Enum
 
 from .docker_svc import get_container_logs, restart_container
-
-
-class ServiceType(str, Enum):
-    SYSTEMD = "systemd"
-    DOCKER = "docker"
-
-
-@dataclass
-class ServiceEntry:
-    type: ServiceType
-    unit: str  # systemd unit name or docker container name
-
-
-ALLOWED_SERVICES: dict[str, ServiceEntry] = {
-    "quickdrop": ServiceEntry(ServiceType.DOCKER, "quickdrop"),
-    "bottycoon-bot": ServiceEntry(ServiceType.DOCKER, "bottycoon-bot"),
-    "nginx": ServiceEntry(ServiceType.SYSTEMD, "nginx.service"),
-}
+from .registry import RunType, get_manageable
 
 
 async def get_logs(service_id: str, lines: int = 50) -> dict:
-    entry = ALLOWED_SERVICES.get(service_id)
+    registry = get_manageable()
+    entry = registry.get(service_id)
     if not entry:
         return {"service": service_id, "available": False, "logs": f"Unknown: {service_id}"}
 
-    if entry.type == ServiceType.DOCKER:
-        return await get_container_logs(entry.unit, lines)
+    if entry.run_type == RunType.DOCKER:
+        return await get_container_logs(entry.manage_unit, lines)
 
-    return await _systemd_logs(service_id, entry.unit, lines)
+    return await _systemd_logs(service_id, entry.manage_unit, lines)
 
 
 async def restart_service(service_id: str) -> dict:
-    entry = ALLOWED_SERVICES.get(service_id)
+    registry = get_manageable()
+    entry = registry.get(service_id)
     if not entry:
         return {"service": service_id, "success": False, "detail": f"Unknown: {service_id}"}
 
-    if entry.type == ServiceType.DOCKER:
-        return await restart_container(entry.unit)
+    if entry.run_type == RunType.DOCKER:
+        return await restart_container(entry.manage_unit)
 
-    return await _systemd_restart(service_id, entry.unit)
+    return await _systemd_restart(service_id, entry.manage_unit)
 
 
 async def _systemd_logs(service_id: str, unit: str, lines: int) -> dict:

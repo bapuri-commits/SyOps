@@ -7,7 +7,7 @@ from pathlib import Path
 
 import httpx
 
-from ..core.config import settings
+from .registry import HealthCheckType, get_enabled
 
 _client: httpx.AsyncClient | None = None
 
@@ -26,76 +26,94 @@ async def close_client() -> None:
         _client = None
 
 
-async def check_quickdrop() -> dict:
+async def _check_http(service_id: str, url: str) -> dict:
     try:
-        r = await _get_client().get(settings.quickdrop_local_url)
+        r = await _get_client().get(url)
         return {
-            "id": "quickdrop",
+            "id": service_id,
             "status": "up" if r.status_code < 500 else "down",
             "latency_ms": int(r.elapsed.total_seconds() * 1000),
         }
     except Exception:
-        return {"id": "quickdrop", "status": "down"}
+        return {"id": service_id, "status": "down"}
 
 
-async def check_news_agent() -> dict:
-    root = Path(settings.news_agent_root)
-    index = root / "index.html"
-    if not index.exists():
-        return {"id": "news-agent", "status": "down"}
-    mtime = datetime.fromtimestamp(index.stat().st_mtime, tz=timezone.utc)
-    return {
-        "id": "news-agent",
-        "status": "up",
-        "last_updated": mtime.isoformat(),
-    }
-
-
-async def check_bottycoon_bot() -> dict:
-    """Docker 컨테이너 실행 여부로 봇 상태를 판단한다."""
+async def _check_docker_inspect(service_id: str, container: str) -> dict:
     if sys.platform == "win32":
-        return {"id": "bottycoon-bot", "status": "unknown", "detail": "Windows — docker 사용 불가"}
+        return {"id": service_id, "status": "unknown", "detail": "Windows"}
     try:
         proc = await asyncio.create_subprocess_exec(
-            "docker", "inspect", "-f", "{{.State.Status}}", "bottycoon-bot",
+            "docker", "inspect", "-f", "{{.State.Status}}", container,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, _ = await proc.communicate()
         state = stdout.decode().strip()
         return {
-            "id": "bottycoon-bot",
+            "id": service_id,
             "status": "up" if state == "running" else "down",
             "container_state": state,
         }
     except Exception:
-        return {"id": "bottycoon-bot", "status": "unknown"}
+        return {"id": service_id, "status": "unknown"}
 
 
-async def check_nginx() -> dict:
+async def _check_file_exists(service_id: str, path_str: str) -> dict:
+    p = Path(path_str)
+    if not p.exists():
+        return {"id": service_id, "status": "down"}
+    mtime = datetime.fromtimestamp(p.stat().st_mtime, tz=timezone.utc)
+    return {
+        "id": service_id,
+        "status": "up",
+        "last_updated": mtime.isoformat(),
+    }
+
+
+async def _check_systemctl(service_id: str, unit: str) -> dict:
     if sys.platform == "win32":
-        return {"id": "nginx", "status": "unknown", "detail": "Windows — systemctl 사용 불가"}
+        return {"id": service_id, "status": "unknown", "detail": "Windows"}
     try:
         proc = await asyncio.create_subprocess_exec(
-            "systemctl", "is-active", "nginx",
+            "systemctl", "is-active", unit,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, _ = await proc.communicate()
         active = stdout.decode().strip() == "active"
-        return {"id": "nginx", "status": "up" if active else "down"}
+        return {"id": service_id, "status": "up" if active else "down"}
     except Exception:
-        return {"id": "nginx", "status": "unknown"}
+        return {"id": service_id, "status": "unknown"}
+
+
+_CHECKERS = {
+    HealthCheckType.HTTP: _check_http,
+    HealthCheckType.DOCKER_INSPECT: _check_docker_inspect,
+    HealthCheckType.FILE_EXISTS: _check_file_exists,
+    HealthCheckType.SYSTEMCTL: _check_systemctl,
+}
+
+
+async def check_service(service_id: str) -> dict:
+    from .registry import get_by_id
+    svc = get_by_id(service_id)
+    if not svc or not svc.enabled:
+        return {"id": service_id, "status": "unknown"}
+    checker = _CHECKERS.get(svc.health_check)
+    if not checker:
+        return {"id": service_id, "status": "unknown"}
+    return await checker(svc.id, svc.health_target)
 
 
 async def check_all() -> list[dict]:
-    results = await asyncio.gather(
-        check_quickdrop(),
-        check_bottycoon_bot(),
-        check_news_agent(),
-        check_nginx(),
-        return_exceptions=True,
-    )
+    enabled = get_enabled()
+    tasks = []
+    for svc in enabled:
+        checker = _CHECKERS.get(svc.health_check)
+        if checker:
+            tasks.append(checker(svc.id, svc.health_target))
+
+    results = await asyncio.gather(*tasks, return_exceptions=True)
     out: list[dict] = []
     for r in results:
         if isinstance(r, Exception):

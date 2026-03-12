@@ -318,13 +318,21 @@ server {
 
 ---
 
-## 구현 우선순위
+## 구현 상태
 
-### 즉시 (인프라 개선)
+### 인프라 개선
 
-1. `syworkspace.cloud` 루트를 SyOps 포털로 변경 (리다이렉트 제거)
-2. 와일드카드 SSL 인증서 발급
-3. nginx 설정 파일 분리
+1. [x] `syworkspace.cloud` 루트를 SyOps 포털로 변경 (리다이렉트 제거) — 완료
+2. [ ] 와일드카드 SSL 인증서 발급 — Cloudflare NS 위임 방식 결정, 가이드 작성 완료 (`docs/WILDCARD_SSL_SETUP.md`), VPS 적용 대기
+3. [x] nginx 설정 파일 분리 — `deploy/nginx/sites/` 로 분리 완료, VPS 적용 대기
+
+### 코드 변경
+
+4. [x] 서비스 카탈로그 9개 확장 — `frontend/src/data/services.ts`
+5. [x] 랜딩 페이지 카테고리별 리디자인 — `frontend/src/pages/Landing.tsx`
+6. [x] 백엔드 서비스 레지스트리 리팩터링 — `backend/services/registry.py`
+7. [x] deploy.sh 서비스 추가 — `deploy/scripts/deploy.sh`
+8. [x] nginx 서비스 템플릿 와일드카드 SSL 경로로 업데이트 — `deploy/templates/nginx-service.conf`
 
 ### 서비스 배포 순서 (development-roadmap.md 블록 순서 따름)
 
