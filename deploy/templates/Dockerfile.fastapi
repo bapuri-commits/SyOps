@@ -10,6 +10,7 @@ COPY frontend/ ./frontend/
 
 WORKDIR /app/backend
 
-EXPOSE ${PORT:-8000}
+# 포트는 프로젝트에 맞게 수정 (예: 8400)
+EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "${PORT:-8000}"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
