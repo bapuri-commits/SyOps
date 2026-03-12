@@ -5,7 +5,6 @@ import { useServiceHealth } from "../hooks/useServiceHealth";
 import MetricBar from "../components/dashboard/MetricBar";
 import SslCard, { type SslData } from "../components/dashboard/SslCard";
 import ServicePanel from "../components/dashboard/ServicePanel";
-import StatusBadge from "../components/StatusBadge";
 
 interface Metrics {
   cpu: { percent: number; cores: number };
