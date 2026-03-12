@@ -2,7 +2,7 @@ export interface ServiceInfo {
   id: string;
   name: string;
   description: string;
-  url: string;
+  url?: string;
   icon: string;
 }
 

@@ -51,6 +51,27 @@ async def check_news_agent() -> dict:
     }
 
 
+async def check_bottycoon_bot() -> dict:
+    """Docker 컨테이너 실행 여부로 봇 상태를 판단한다."""
+    if sys.platform == "win32":
+        return {"id": "bottycoon-bot", "status": "unknown", "detail": "Windows — docker 사용 불가"}
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "docker", "inspect", "-f", "{{.State.Status}}", "bottycoon-bot",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, _ = await proc.communicate()
+        state = stdout.decode().strip()
+        return {
+            "id": "bottycoon-bot",
+            "status": "up" if state == "running" else "down",
+            "container_state": state,
+        }
+    except Exception:
+        return {"id": "bottycoon-bot", "status": "unknown"}
+
+
 async def check_nginx() -> dict:
     if sys.platform == "win32":
         return {"id": "nginx", "status": "unknown", "detail": "Windows — systemctl 사용 불가"}
@@ -70,6 +91,7 @@ async def check_nginx() -> dict:
 async def check_all() -> list[dict]:
     results = await asyncio.gather(
         check_quickdrop(),
+        check_bottycoon_bot(),
         check_news_agent(),
         check_nginx(),
         return_exceptions=True,

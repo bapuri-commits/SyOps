@@ -9,6 +9,12 @@ export const services: ServiceInfo[] = [
     icon: "📤",
   },
   {
+    id: "bottycoon-bot",
+    name: "BotTycoon",
+    description: "Discord 서버 운영 봇. 투표, 일정, BC 경제, AI 요약.",
+    icon: "🤖",
+  },
+  {
     id: "news-agent",
     name: "News Agent",
     description: "AI 기반 기술 뉴스 큐레이션. 매일 핵심만 요약.",

@@ -21,6 +21,7 @@ class ServiceEntry:
 
 ALLOWED_SERVICES: dict[str, ServiceEntry] = {
     "quickdrop": ServiceEntry(ServiceType.DOCKER, "quickdrop"),
+    "bottycoon-bot": ServiceEntry(ServiceType.DOCKER, "bottycoon-bot"),
     "nginx": ServiceEntry(ServiceType.SYSTEMD, "nginx.service"),
 }
 
