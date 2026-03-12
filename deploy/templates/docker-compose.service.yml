@@ -1,0 +1,26 @@
+# 서비스 Docker Compose 템플릿
+# 사용법: 프로젝트의 docker/ 디렉토리에 복사 후 수정
+#
+# 필수 수정:
+#   - service_name → 실제 서비스명
+#   - 포트 번호 (SyOps 대시보드에서 미사용 포트 확인)
+#   - volumes → 서비스에 필요한 데이터 디렉토리
+#   - environment → 서비스별 컨테이너 내부 경로
+#
+# VPS 배포 시 docker/.env 파일 생성:
+#   DATA_DIR=/opt/data/<service_name>
+#   + 서비스별 시크릿 (API 키, 비밀번호 등)
+
+services:
+  service_name:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: service_name
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - ${DATA_DIR:-../data}/data:/data
+    env_file:
+      - .env
+    restart: unless-stopped
