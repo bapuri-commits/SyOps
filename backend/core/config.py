@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Services
     quickdrop_local_url: str = "http://127.0.0.1:8200"
     news_agent_root: str = "/var/www/news-agent"
+    bottycoon_api_url: str = "http://127.0.0.1:8400"
 
     model_config = {
         "env_file": Path(__file__).resolve().parents[2] / ".env",

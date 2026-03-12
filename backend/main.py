@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.database import close_db, init_db
-from .routers import auth, health, metrics, services, ssl
+from .routers import auth, bot_proxy, health, metrics, services, ssl
 from .services.health import close_client
 
 
@@ -22,7 +22,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["https://syworkspace.cloud", "http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["*"],
 )
 
@@ -31,6 +31,7 @@ app.include_router(health.router)
 app.include_router(metrics.router)
 app.include_router(services.router)
 app.include_router(ssl.router)
+app.include_router(bot_proxy.router)
 
 
 @app.get("/")

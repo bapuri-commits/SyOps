@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException
 
-from ..services.health import check_all, check_quickdrop, check_news_agent, check_nginx
+from ..services.health import check_all, check_quickdrop, check_bottycoon_bot, check_news_agent, check_nginx
 
 router = APIRouter(prefix="/api/health", tags=["health"])
 
 _checkers = {
     "quickdrop": check_quickdrop,
+    "bottycoon-bot": check_bottycoon_bot,
     "news-agent": check_news_agent,
     "nginx": check_nginx,
 }

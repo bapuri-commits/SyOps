@@ -5,6 +5,7 @@ import { useServiceHealth } from "../hooks/useServiceHealth";
 import MetricBar from "../components/dashboard/MetricBar";
 import SslCard, { type SslData } from "../components/dashboard/SslCard";
 import ServicePanel from "../components/dashboard/ServicePanel";
+import StatusBadge from "../components/StatusBadge";
 
 interface Metrics {
   cpu: { percent: number; cores: number };
@@ -16,6 +17,7 @@ const METRIC_POLL_MS = 10_000;
 
 const MANAGED_SERVICES = [
   { id: "quickdrop", name: "QuickDrop" },
+  { id: "bottycoon-bot", name: "BotTycoon", detailPath: "/dashboard/bottycoon" },
   { id: "nginx", name: "nginx" },
 ];
 
@@ -118,12 +120,24 @@ export default function Dashboard() {
         <h2 className="mb-3 text-sm font-semibold text-slate-300">서비스 관리</h2>
         <div className="space-y-3">
           {MANAGED_SERVICES.map((svc) => (
-            <ServicePanel
-              key={svc.id}
-              id={svc.id}
-              name={svc.name}
-              status={healthMap[svc.id]?.status ?? "unknown"}
-            />
+            <div key={svc.id}>
+              <ServicePanel
+                id={svc.id}
+                name={svc.name}
+                status={healthMap[svc.id]?.status ?? "unknown"}
+              />
+              {"detailPath" in svc && svc.detailPath && (
+                <Link
+                  to={svc.detailPath}
+                  className="mt-1 flex items-center gap-1 px-1 text-xs text-accent-dim hover:text-accent transition-colors"
+                >
+                  상세 대시보드
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                  </svg>
+                </Link>
+              )}
+            </div>
           ))}
         </div>
       </section>
