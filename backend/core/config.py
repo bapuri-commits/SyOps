@@ -19,7 +19,10 @@ class Settings(BaseSettings):
     quickdrop_local_url: str = "http://127.0.0.1:8200"
     news_agent_root: str = "/var/www/news-agent"
 
-    model_config = {"env_file": Path(__file__).resolve().parents[2] / ".env"}
+    model_config = {
+        "env_file": Path(__file__).resolve().parents[2] / ".env",
+        "extra": "ignore",
+    }
 
 
 settings = Settings()
