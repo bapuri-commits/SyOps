@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends
 
-from ..core.auth import require_auth
+from ..core.auth import get_current_user
 from ..services.ssl_check import check_ssl
 
-router = APIRouter(prefix="/api/ssl", tags=["ssl"], dependencies=[Depends(require_auth)])
+router = APIRouter(prefix="/api/ssl", tags=["ssl"], dependencies=[Depends(get_current_user)])
 
 
 @router.get("")

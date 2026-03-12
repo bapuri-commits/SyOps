@@ -3,72 +3,104 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
+  useRef,
   type ReactNode,
 } from "react";
 
 interface AuthContextType {
   authenticated: boolean;
-  login: (password: string) => Promise<boolean>;
-  logout: () => void;
+  initializing: boolean;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-function toBase64(str: string): string {
-  return btoa(
-    new TextEncoder()
-      .encode(str)
-      .reduce((acc, byte) => acc + String.fromCharCode(byte), ""),
-  );
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [creds, setCreds] = useState<string | null>(
-    () => sessionStorage.getItem("syops_auth"),
-  );
+  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
+  const tokenRef = useRef(accessToken);
+  tokenRef.current = accessToken;
 
-  const login = useCallback(async (password: string) => {
-    const encoded = toBase64(`admin:${password}`);
+  const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
-      const res = await fetch("/api/metrics", {
-        headers: { Authorization: `Basic ${encoded}` },
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        credentials: "include",
       });
       if (res.ok) {
-        sessionStorage.setItem("syops_auth", encoded);
-        setCreds(encoded);
+        const data = await res.json();
+        setAccessToken(data.access_token);
+        return data.access_token;
+      }
+    } catch { /* network error */ }
+    setAccessToken(null);
+    return null;
+  }, []);
+
+  useEffect(() => {
+    refreshAccessToken().finally(() => setInitializing(false));
+  }, [refreshAccessToken]);
+
+  const login = useCallback(async (username: string, password: string) => {
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAccessToken(data.access_token);
         return true;
       }
     } catch { /* network error */ }
     return false;
   }, []);
 
-  const logout = useCallback(() => {
-    sessionStorage.removeItem("syops_auth");
-    setCreds(null);
+  const logout = useCallback(async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch { /* ignore */ }
+    setAccessToken(null);
   }, []);
 
   const authFetch = useCallback(
     async (url: string, options?: RequestInit): Promise<Response> => {
-      const res = await fetch(url, {
-        ...options,
-        headers: {
-          ...options?.headers,
-          ...(creds ? { Authorization: `Basic ${creds}` } : {}),
-        },
-      });
+      const doFetch = (token: string | null) =>
+        fetch(url, {
+          ...options,
+          headers: {
+            ...options?.headers,
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+        });
+
+      let res = await doFetch(tokenRef.current);
+
       if (res.status === 401) {
-        sessionStorage.removeItem("syops_auth");
-        setCreds(null);
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          res = await doFetch(newToken);
+        } else {
+          setAccessToken(null);
+        }
       }
+
       return res;
     },
-    [creds],
+    [refreshAccessToken],
   );
 
   return (
     <AuthContext.Provider
-      value={{ authenticated: !!creds, login, logout, authFetch }}
+      value={{ authenticated: !!accessToken, initializing, login, logout, authFetch }}
     >
       {children}
     </AuthContext.Provider>

@@ -5,6 +5,7 @@ import { useAuth } from "../contexts/AuthContext";
 export default function Login() {
   const { authenticated, login } = useAuth();
   const navigate = useNavigate();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,7 +18,7 @@ export default function Login() {
     e.preventDefault();
     setError(false);
     setLoading(true);
-    const ok = await login(password);
+    const ok = await login(username, password);
     setLoading(false);
     if (ok) {
       navigate("/dashboard", { replace: true });
@@ -39,22 +40,42 @@ export default function Login() {
           <p className="mt-1 text-sm text-slate-400">관리 대시보드 로그인</p>
         </div>
 
-        <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-300">
-            비밀번호
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoFocus
-            required
-            className="mt-1.5 w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent"
-            placeholder="비밀번호 입력"
-          />
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-sm font-medium text-slate-300">
+              아이디
+            </label>
+            <input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoFocus
+              autoComplete="username"
+              required
+              className="mt-1.5 w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent"
+              placeholder="아이디 입력"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-slate-300">
+              비밀번호
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              required
+              className="mt-1.5 w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-white placeholder-slate-500 outline-none transition-colors focus:border-accent"
+              placeholder="비밀번호 입력"
+            />
+          </div>
+
           {error && (
-            <p className="mt-2 text-xs text-red-400">비밀번호가 올바르지 않습니다.</p>
+            <p className="text-xs text-red-400">아이디 또는 비밀번호가 올바르지 않습니다.</p>
           )}
         </div>
 

@@ -9,6 +9,12 @@ dependencies = [
     "httpx>=0.28",
     "psutil>=6.0",
     "pydantic-settings>=2.7",
+    "sqlalchemy[asyncio]>=2.0",
+    "aiosqlite>=0.20",
+    "pyjwt>=2.8",
+    "passlib[bcrypt]>=1.7",
+    "python-multipart>=0.0.9",
+    "alembic>=1.13",
 ]
 
 [project.optional-dependencies]

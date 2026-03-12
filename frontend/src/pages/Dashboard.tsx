@@ -20,7 +20,7 @@ const MANAGED_SERVICES = [
 ];
 
 export default function Dashboard() {
-  const { authenticated, logout, authFetch } = useAuth();
+  const { authenticated, initializing, logout, authFetch } = useAuth();
   const navigate = useNavigate();
 
   const healthMap = useServiceHealth(MANAGED_SERVICES.map((s) => s.id));
@@ -35,6 +35,7 @@ export default function Dashboard() {
   }, [authFetch]);
 
   useEffect(() => {
+    if (initializing) return;
     if (!authenticated) {
       navigate("/login", { replace: true });
       return;
@@ -42,18 +43,18 @@ export default function Dashboard() {
     fetchMetrics();
     const timer = setInterval(fetchMetrics, METRIC_POLL_MS);
     return () => clearInterval(timer);
-  }, [authenticated, navigate, fetchMetrics]);
+  }, [authenticated, initializing, navigate, fetchMetrics]);
 
   useEffect(() => {
-    if (!authenticated) return;
+    if (initializing || !authenticated) return;
     authFetch("/api/ssl")
       .then((r) => (r.ok ? r.json() : null))
       .then((d) => d && setSsl(d))
       .catch(() => {});
-  }, [authenticated, authFetch]);
+  }, [authenticated, initializing, authFetch]);
 
-  function handleLogout() {
-    logout();
+  async function handleLogout() {
+    await logout();
     navigate("/", { replace: true });
   }
 
