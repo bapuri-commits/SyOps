@@ -1,18 +1,37 @@
-import { useState, useEffect, type FormEvent } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useMemo, type FormEvent } from "react";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+
+function getValidRedirect(params: URLSearchParams): string | null {
+  const raw = params.get("redirect");
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.hostname.endsWith(".syworkspace.cloud") || url.hostname === "syworkspace.cloud") {
+      return raw;
+    }
+  } catch { /* invalid URL */ }
+  return null;
+}
 
 export default function Login() {
   const { authenticated, login } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirect = useMemo(() => getValidRedirect(searchParams), [searchParams]);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (authenticated) navigate("/dashboard", { replace: true });
-  }, [authenticated, navigate]);
+    if (!authenticated) return;
+    if (redirect) {
+      window.location.href = redirect;
+    } else {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [authenticated, navigate, redirect]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -21,7 +40,11 @@ export default function Login() {
     const ok = await login(username, password);
     setLoading(false);
     if (ok) {
-      navigate("/dashboard", { replace: true });
+      if (redirect) {
+        window.location.href = redirect;
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     } else {
       setError(true);
     }

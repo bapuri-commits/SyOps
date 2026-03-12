@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     # JWT
     access_token_expire_minutes: int = 30
     refresh_token_expire_days: int = 30
+    cookie_domain: str = ".syworkspace.cloud"
 
     # Database
     database_url: str = _default_db

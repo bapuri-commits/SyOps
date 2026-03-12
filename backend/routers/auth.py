@@ -81,6 +81,26 @@ def _clear_refresh_cookie(response: Response) -> None:
     response.delete_cookie(key=REFRESH_COOKIE, path="/api/auth")
 
 
+ACCESS_COOKIE = "syops_token"
+
+
+def _set_access_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=ACCESS_COOKIE,
+        value=token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        domain=settings.cookie_domain,
+        max_age=settings.access_token_expire_minutes * 60,
+        path="/",
+    )
+
+
+def _clear_access_cookie(response: Response) -> None:
+    response.delete_cookie(key=ACCESS_COOKIE, path="/", domain=settings.cookie_domain)
+
+
 # ── Endpoints ──
 
 
@@ -106,8 +126,9 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
     db.add(refresh_row)
     await db.commit()
 
-    access = create_access_token(user.id, user.role)
+    access = create_access_token(user.id, user.role, user.username)
     _set_refresh_cookie(response, raw_refresh)
+    _set_access_cookie(response, access)
 
     return LoginResponse(access_token=access)
 
@@ -150,8 +171,9 @@ async def refresh(
     db.add(new_rt)
     await db.commit()
 
-    access = create_access_token(user.id, user.role)
+    access = create_access_token(user.id, user.role, user.username)
     _set_refresh_cookie(response, new_raw)
+    _set_access_cookie(response, access)
 
     return TokenRefreshResponse(access_token=access)
 
@@ -171,10 +193,24 @@ async def logout(
             await db.commit()
 
     _clear_refresh_cookie(response)
+    _clear_access_cookie(response)
 
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_current_user)):
+    return user
+
+
+@router.get("/users/{username}", response_model=UserResponse)
+async def get_user_by_username(
+    username: str,
+    _user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(User).where(User.username == username, User.is_active == True))  # noqa: E712
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
 
 
