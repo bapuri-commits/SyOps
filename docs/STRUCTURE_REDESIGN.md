@@ -59,9 +59,8 @@
 
 | 서비스 | 접근 방식 | 비고 |
 |--------|-----------|------|
+| StudyHub (school_sync + lesson-assist) | `study.syworkspace.cloud` (서브도메인) | 독립 Docker, 포트 8203 |
 | Voca_Drill | 미정 | 배포 시 결정 |
-| lesson-assist | 미정 | 배포 시 결정 |
-| school_sync | 미정 | 배포 시 결정 |
 | aram_mayhem_bot | 미정 | 배포 시 결정 |
 | The_Agent | 미정 | 배포 시 결정 |
 | PrivateLLM | 미정 | 배포 시 결정 |

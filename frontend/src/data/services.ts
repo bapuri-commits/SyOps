@@ -23,20 +23,11 @@ export const services: ServiceInfo[] = [
 
   // --- 생산성 ---
   {
-    id: "lesson-assist",
-    name: "Lesson Assist",
-    description: "수업 녹음 → 전사 → 요약. 다글로 + NotebookLM 기반 학습 파이프라인.",
-    url: "https://lesson.syworkspace.cloud",
+    id: "study",
+    name: "StudyHub",
+    description: "LMS 크롤링 + AI Q&A + 수업 패키징. school_sync + lesson-assist 통합.",
+    url: "https://study.syworkspace.cloud",
     icon: "🎓",
-    category: "productivity",
-    deployStatus: "coming_soon",
-  },
-  {
-    id: "school-sync",
-    name: "School Sync",
-    description: "LMS 크롤링 + LLM Q&A. 수업자료 통합 관리.",
-    url: "https://school.syworkspace.cloud",
-    icon: "🏫",
     category: "productivity",
     deployStatus: "coming_soon",
   },
