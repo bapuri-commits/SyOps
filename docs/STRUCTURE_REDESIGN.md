@@ -1,13 +1,15 @@
 # SyOps 서비스 구조 개선안
 
-> 2026-03-12 작성. syworkspace.cloud 서비스 플랫폼의 도메인·인프라·포털 구조 재설계.
+> 2026-03-12 작성, 2026-03-13 갱신. syworkspace.cloud 서비스 플랫폼의 도메인·인프라·포털 구조 재설계.
 
 ## 배경
 
 - 서비스 대상 프로젝트가 10개로 확대
 - 이용자 2-3명 규모의 개인 서비스 플랫폼
-- 현재 `drop.syworkspace.cloud`, `news.syworkspace.cloud` 서브도메인 사용 중
-- `syworkspace.cloud` 루트는 `drop.syworkspace.cloud`로 리다이렉트 중 (변경 필요)
+- 포트폴리오 >= 서비스 허브 > 운영 대시보드 (우선순위)
+- 주 사용자: 본인(매일) + 친구 2-3명, 부차적으로 면접관/채용담당자
+
+---
 
 ## 서비스 대상 프로젝트
 
@@ -43,19 +45,44 @@
 
 ## 도메인 구조
 
-### 현재 → 변경
+### 현재 상태
 
-| 도메인 | 현재 | 변경 후 |
-|--------|------|---------|
-| `syworkspace.cloud` | → `drop.syworkspace.cloud` 리다이렉트 | **SyOps 포털** (허브) |
-| `drop.syworkspace.cloud` | QuickDrop | 유지 |
-| `news.syworkspace.cloud` | News_Agent | 유지 |
-| `voca.syworkspace.cloud` | - | **신규** — Voca_Drill |
-| `lesson.syworkspace.cloud` | - | **신규** — lesson-assist |
-| `school.syworkspace.cloud` | - | **신규** — school_sync |
-| `aram.syworkspace.cloud` | - | **신규** — aram_mayhem_bot |
-| `agent.syworkspace.cloud` | - | **신규** — The_Agent |
-| `chat.syworkspace.cloud` | - | **신규** — PrivateLLM |
+| 도메인 | 용도 | 상태 |
+|--------|------|------|
+| `syworkspace.cloud` | SyOps 포털 (React + FastAPI) | 운영 중 |
+| `drop.syworkspace.cloud` | QuickDrop | 운영 중 |
+| `news.syworkspace.cloud` | News_Agent | 운영 중 |
+
+### 신규 서비스 접근 방식
+
+신규 서비스는 **프로젝트별로 배포 시점에** 서브도메인/경로 중 택 1. 아래 기준을 참고하되 프로젝트 특성에 따라 결정한다.
+
+| 서비스 | 접근 방식 | 비고 |
+|--------|-----------|------|
+| Voca_Drill | 미정 | 배포 시 결정 |
+| lesson-assist | 미정 | 배포 시 결정 |
+| school_sync | 미정 | 배포 시 결정 |
+| aram_mayhem_bot | 미정 | 배포 시 결정 |
+| The_Agent | 미정 | 배포 시 결정 |
+| PrivateLLM | 미정 | 배포 시 결정 |
+
+### 서브도메인 vs 경로 — 판단 기준
+
+각 프로젝트를 배포할 때 아래 기준으로 결정:
+
+**서브도메인** (`<name>.syworkspace.cloud`)을 쓰는 경우:
+- 자체 백엔드 서버가 있고 SyOps와 독립적으로 동작
+- 프론트엔드가 SyOps React 앱과 별도 (자체 HTML/React 앱)
+- 기존 사례: QuickDrop(`drop.`), News Agent(`news.`)
+
+**SyOps 경로** (`syworkspace.cloud/<path>`)를 쓰는 경우:
+- SyOps React 앱 안에 페이지로 통합 가능
+- 백엔드 API만 별도 컨테이너로 프록시하고 프론트는 SyOps에 포함
+- 기존 사례: 포트폴리오(`/projects`), 블로그(`/blog`), 개발 로그(`/log`), Algorithm Drill(`/algorithm`), 대시보드(`/dashboard`)
+
+**혼합** — 프론트엔드는 SyOps에 통합, 백엔드만 별도 Docker 컨테이너로 프록시하는 방식도 가능.
+
+참고: 기존 서브도메인(`drop.`, `news.`)은 이미 운영 중이므로 변경하지 않는다.
 
 ### 네이밍 규칙
 
@@ -63,22 +90,13 @@
 - 프로젝트명이 아닌 **서비스 목적**에 맞춘 이름
 - BotTycoon-discord-bot은 Discord 봇이므로 별도 서브도메인 없음 (SyOps 대시보드에서 관리)
 
-### 와일드카드 SSL 전환
+### SSL
 
-현재: 서비스 추가 시마다 `certbot --nginx -d <subdomain>.syworkspace.cloud` 실행 필요
-
-변경: `*.syworkspace.cloud` 와일드카드 인증서 1개로 통합
-
-```bash
-# DNS-01 챌린지 (가비아 DNS에서 TXT 레코드 설정 필요)
-sudo certbot certonly --manual --preferred-challenges dns \
-  -d "syworkspace.cloud" -d "*.syworkspace.cloud"
-```
-
-장점:
-- 새 서비스 추가 시 SSL 작업 불필요 (DNS A 레코드만 추가)
-- 인증서 갱신 1회로 모든 서브도메인 커버
-- 자동 갱신 설정 시 DNS 플러그인 필요 (certbot-dns-cloudflare 등, 가비아는 API 미지원이므로 수동 또는 Cloudflare NS 위임 검토)
+- **와일드카드 인증서** `*.syworkspace.cloud` 발급 완료
+- Cloudflare NS 위임 + certbot-dns-cloudflare 자동 갱신
+- 새 서비스 추가 시 SSL 작업 불필요 (Cloudflare DNS에 A 레코드만 추가)
+- 만료: 2026-06-10, certbot.timer로 자동 갱신
+- 상세: `docs/WILDCARD_SSL_SETUP.md`
 
 ---
 
@@ -90,15 +108,17 @@ sudo certbot certonly --manual --preferred-challenges dns \
 nginx (호스트, 리버스 프록시 + 와일드카드 SSL)
 │
 │── syworkspace.cloud           → SyOps        (systemd, :8300)
+│   ├── /services                  서비스 허브
+│   ├── /projects                  포트폴리오
+│   ├── /blog                      일상/글쓰기
+│   ├── /log                       개발 로그
+│   ├── /algorithm                 Algorithm Drill
+│   └── /dashboard                 운영 대시보드 (비공개)
 │
 │── drop.syworkspace.cloud      → [Docker] quickdrop          (:8200)
 │── news.syworkspace.cloud      → [정적]  /opt/data/news-agent/web
-│── voca.syworkspace.cloud      → [Docker] voca-drill         (:8201)
-│── lesson.syworkspace.cloud    → [Docker] lesson-assist      (:8202)
-│── school.syworkspace.cloud    → [Docker] school-sync        (:8203)
-│── aram.syworkspace.cloud      → [Docker] aram-bot           (:8204)
-│── agent.syworkspace.cloud     → [Docker] the-agent          (:8205)
-│── chat.syworkspace.cloud      → [특수]   RunPod 프록시 or 외부 GPU
+│
+│── (신규 서비스는 프로젝트별로 서브도메인/경로 중 택 1 — 배포 시 결정)
 │
 └── (서브도메인 없음)            → [Docker] bottycoon-bot      (Discord 데몬)
 ```
@@ -118,47 +138,40 @@ nginx (호스트, 리버스 프록시 + 와일드카드 SSL)
 |------|--------|------|
 | 80 | nginx | HTTP → HTTPS 리다이렉트 |
 | 443 | nginx | HTTPS 종단 |
-| 8200 | QuickDrop | 기존 유지 |
-| 8201 | Voca_Drill | 신규 |
-| 8202 | lesson-assist | 신규 |
-| 8203 | school_sync | 신규 |
-| 8204 | aram_mayhem_bot | 신규 |
-| 8205 | The_Agent | 신규 |
-| 8300 | SyOps | 기존 유지 |
+| 8200 | QuickDrop | 운영 중 |
+| 8201 | Voca_Drill | 예정 |
+| 8202 | lesson-assist | 예정 |
+| 8203 | school_sync | 예정 |
+| 8204 | aram_mayhem_bot | 예정 |
+| 8205 | The_Agent | 예정 |
+| 8300 | SyOps | 운영 중 |
 
-### 디렉토리 구조 (VPS)
+### nginx 설정
+
+서비스별 개별 conf 파일로 분리 완료:
+
+```
+/etc/nginx/sites-available/
+├── syops.conf          # syworkspace.cloud → :8300
+├── quickdrop.conf      # drop.syworkspace.cloud → :8200
+├── news-agent.conf     # news.syworkspace.cloud → 정적 파일
+├── catch-all.conf      # 알 수 없는 호스트 차단
+└── (서비스 배포 시 추가)
+```
+
+Git 관리: `deploy/nginx/sites/` 에 동일 파일 보관. 표준 템플릿: `deploy/templates/nginx-service.conf`
+
+### VPS 디렉토리 구조
 
 ```
 /opt/
-├── apps/                      # git clone 대상 (코드)
-│   ├── news-agent/
-│   ├── quickdrop/
-│   ├── syops/
-│   ├── voca-drill/            # 신규
-│   ├── lesson-assist/         # 신규
-│   ├── school-sync/           # 신규
-│   ├── aram-bot/              # 신규
-│   ├── the-agent/             # 신규
-│   └── bottycoon-bot/         # 신규
-├── envs/                      # 환경변수 (chmod 700)
-│   ├── news-agent.env
-│   ├── quickdrop.env
+├── apps/              # git clone 대상 (코드)
+├── envs/              # 환경변수 (chmod 600)
+│   ├── cloudflare.ini # Cloudflare API 토큰 (SSL 자동 갱신)
 │   ├── syops.env
-│   ├── voca-drill.env         # 신규
-│   ├── lesson-assist.env      # 신규
-│   ├── school-sync.env        # 신규
-│   ├── aram-bot.env           # 신규
-│   ├── the-agent.env          # 신규
-│   └── bottycoon-bot.env      # 신규
-├── data/                      # 런타임 데이터 (git 외부)
-│   ├── news-agent/
-│   ├── quickdrop/
-│   ├── voca-drill/            # 신규
-│   ├── lesson-assist/         # 신규
-│   ├── school-sync/           # 신규
-│   ├── aram-bot/              # 신규
-│   ├── the-agent/             # 신규
-│   └── bottycoon-bot/         # 신규
+│   ├── quickdrop.env
+│   └── news-agent.env
+├── data/              # 런타임 데이터 (git 외부)
 ├── logs/
 ├── scripts/
 └── backups/
@@ -166,110 +179,95 @@ nginx (호스트, 리버스 프록시 + 와일드카드 SSL)
 
 ### Docker 표준 템플릿
 
-각 서비스의 Docker 구성 통일:
-
 ```
 /opt/apps/<project>/
 ├── docker/
 │   ├── Dockerfile
 │   ├── docker-compose.yml
-│   └── .env                   # → /opt/envs/<project>.env 심링크 또는 직접 생성
+│   └── .env
 ├── (소스코드)
 └── ...
 
-/opt/data/<project>/           # 런타임 데이터 (Docker 바인드 마운트)
-/opt/envs/<project>.env        # 환경변수 (chmod 600)
+/opt/data/<project>/           # Docker 바인드 마운트
+/opt/envs/<project>.env        # 환경변수
 ```
 
-기존 `SyOps/deploy/templates/` 템플릿 그대로 활용.
+기존 `SyOps/deploy/templates/` 템플릿 활용.
 
 ---
 
-## SyOps 포털 역할
+## SyOps 포털
 
-### syworkspace.cloud 루트를 허브로 전환
+### 역할
 
-현재: `syworkspace.cloud` → `drop.syworkspace.cloud` 리다이렉트
+SyOps 포털 (`syworkspace.cloud`)은 3가지 역할을 겸한다:
 
-변경: SyOps 포털이 루트 도메인에서 직접 서비스
+1. **포트폴리오** — 프로젝트 쇼케이스, 기술 스택, 아키텍처 (면접관 타겟)
+2. **서비스 허브** — 운영 중 서비스 바로가기 (본인 일상 사용)
+3. **운영 대시보드** — CPU/메모리/서비스 관리 (비공개, 로그인 필요)
+
+### 페이지 구조
 
 ```
-SyOps 포털 (syworkspace.cloud)
-├── 서비스 카탈로그         → 카테고리별 서비스 카드 + 바로가기 링크
-├── 상태 모니터링           → Docker 컨테이너 + systemd 서비스 health check
-├── BotTycoon 대시보드      → 봇 상태 / 로그 / 경제 시스템 조회
-└── 관리 기능               → 재시작, 로그 조회, 배포 트리거
+/               → Landing (히어로 소개 + CTA 분기)
+/services       → 서비스 허브 (카테고리별 서비스 카드, 헬스체크)
+/projects       → 프로젝트 포트폴리오 (면접관 타겟)
+/projects/:id   → 프로젝트 상세 (아키텍처, 기술 결정)
+/blog           → 일상/글쓰기 (에세이, 생각, 일상 기록)
+/log            → 개발 로그 (형태 TBD)
+/algorithm      → Algorithm Drill (형태 TBD)
+/login          → 로그인
+/dashboard      → 운영 대시보드 (비공개)
+/dashboard/bottycoon → BotTycoon 대시보드
+```
+
+### Landing (/) — 히어로 + 분기
+
+```
+┌──────────────────────────────────────────────────┐
+│  [Navbar] SyOps | 서비스 | 프로젝트 | 블로그 | 개발로그 | 알고리즘 │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│                    SyOps                         │
+│        풀스택 개인 서비스 플랫폼                   │
+│                                                  │
+│    N개 서비스 운영 · N개 프로젝트 · N문제           │
+│                                                  │
+│  ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│  │ 서비스  │ │프로젝트 │ │ 블로그  │ │개발로그 │ │알고리즘 │
+│  │ N개    │ │포트폴리오│ │ 일상글 │ │ 최근글 │ │ N문제  │
+│  └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
+│                                                  │
+│                                       [관리]      │
+└──────────────────────────────────────────────────┘
 ```
 
 ### 서비스 카탈로그 카테고리
 
-포털에서 서비스를 보여줄 때의 분류:
+| 카테고리 | 서비스 | 접근 방식 | 설명 |
+|----------|--------|-----------|------|
+| **유틸리티** | QuickDrop | `drop.` (서브도메인) | 파일 공유 |
+| **유틸리티** | News_Agent | `news.` (서브도메인) | 뉴스 브리핑 |
+| **생산성** | lesson-assist | 미정 | 수업 녹음 → 요약 |
+| **생산성** | school_sync | 미정 | LMS 통합 Q&A |
+| **생산성** | Voca_Drill | 미정 | 영단어 학습 |
+| **AI/챗** | The_Agent | 미정 | AI 개인 비서 |
+| **AI/챗** | PrivateLLM | 미정 | AI 챗봇 |
+| **AI/챗** | aram_mayhem_bot | 미정 | LoL 메타 분석 |
+| **Discord** | BotTycoon-discord-bot | 대시보드 전용 | 서버 운영 봇 |
 
-| 카테고리 | 서비스 | 서브도메인 | 설명 |
-|----------|--------|------------|------|
-| **생산성** | lesson-assist | `lesson` | 수업 녹음 → 요약 |
-| **생산성** | school_sync | `school` | LMS 통합 Q&A |
-| **생산성** | Voca_Drill | `voca` | 영단어 학습 |
-| **유틸리티** | QuickDrop | `drop` | 파일 공유 |
-| **유틸리티** | News_Agent | `news` | 뉴스 브리핑 |
-| **AI/챗** | The_Agent | `agent` | AI 개인 비서 |
-| **AI/챗** | PrivateLLM | `chat` | AI 챗봇 |
-| **AI/챗** | aram_mayhem_bot | `aram` | LoL 메타 분석 |
-| **Discord** | BotTycoon-discord-bot | - | 서버 운영 봇 (대시보드 전용) |
+### 포털 콘텐츠 (SyOps 경로)
 
----
-
-## nginx 설정 구조
-
-### 현재 → 변경
-
-현재: `/etc/nginx/sites-available/services` 단일 파일에 모든 server block
-
-변경: 서비스별 파일 분리 (서비스 10개 이상이면 관리성 향상)
-
-```
-/etc/nginx/
-├── sites-available/
-│   ├── syops.conf              # syworkspace.cloud → :8300
-│   ├── quickdrop.conf          # drop.syworkspace.cloud → :8200
-│   ├── news-agent.conf         # news.syworkspace.cloud → 정적 파일
-│   ├── voca-drill.conf         # voca.syworkspace.cloud → :8201
-│   ├── lesson-assist.conf      # lesson.syworkspace.cloud → :8202
-│   ├── school-sync.conf        # school.syworkspace.cloud → :8203
-│   ├── aram-bot.conf           # aram.syworkspace.cloud → :8204
-│   ├── the-agent.conf          # agent.syworkspace.cloud → :8205
-│   └── privatellm.conf         # chat.syworkspace.cloud → RunPod 프록시
-├── sites-enabled/              # 활성화된 서비스만 심링크
-├── snippets/
-│   └── security-headers.conf   # 공통 보안 헤더 (기존 유지)
-└── nginx.conf
-```
-
-### nginx server block 표준 템플릿
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name <subdomain>.syworkspace.cloud;
-
-    ssl_certificate     /etc/letsencrypt/live/syworkspace.cloud/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/syworkspace.cloud/privkey.pem;
-
-    include snippets/security-headers.conf;
-
-    location / {
-        proxy_pass http://127.0.0.1:<port>;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
+| 경로 | 콘텐츠 | 상태 |
+|------|--------|------|
+| `/projects` | 프로젝트 포트폴리오 (카드 + 상세) | 구현 예정 |
+| `/blog` | 일상/글쓰기 (에세이, 생각) | 형태 TBD |
+| `/log` | 개발 로그 | 형태 TBD |
+| `/algorithm` | Algorithm Drill 풀이 현황 | 형태 TBD |
 
 ---
 
-## 서비스 추가 체크리스트 (개정)
+## 서비스 추가 체크리스트
 
 새 서비스 배포 시:
 
@@ -280,10 +278,10 @@ server {
 5. `cd /opt/apps/<project>/docker && docker compose up -d --build`
 6. `/etc/nginx/sites-available/<project>.conf` 작성 (표준 템플릿 기반)
 7. `ln -s /etc/nginx/sites-available/<project>.conf /etc/nginx/sites-enabled/`
-8. 가비아 DNS에 A 레코드 추가: `<subdomain>` → `46.250.251.82`
+8. Cloudflare DNS에 A 레코드 추가: `<subdomain>` → `46.250.251.82`
 9. `sudo nginx -t && sudo systemctl reload nginx`
-10. 와일드카드 SSL이므로 certbot 불필요 (이미 커버됨)
-11. SyOps 서비스 카탈로그에 서비스 등록
+10. 와일드카드 SSL이므로 certbot 불필요
+11. SyOps 서비스 카탈로그 + 백엔드 레지스트리에 서비스 등록
 
 ---
 
@@ -292,8 +290,8 @@ server {
 ### 현재 서버 상태
 
 - CPU: 6 vCPU
-- RAM: 12 GB
-- 디스크: 96 GB SSD (9.9G 사용 / 86G 여유)
+- RAM: 12 GB (사용 ~1.1GB / 여유 ~10GB)
+- 디스크: 96 GB SSD (사용 12G / 여유 84G)
 - 이용자: 2-3명
 
 ### 예상 리소스 사용
@@ -314,27 +312,39 @@ server {
 
 12GB RAM에서 1.5GB는 충분한 여유. Docker 오버헤드 포함해도 3GB 이내.
 
-단, lesson-assist의 whisper 추론은 CPU 집약적이므로 동시 요청 시 다른 서비스에 영향 가능. 2-3명 규모에서는 문제 없음.
-
 ---
 
 ## 구현 상태
 
-### 인프라 개선
+### 인프라 (완료)
 
-1. [x] `syworkspace.cloud` 루트를 SyOps 포털로 변경 (리다이렉트 제거) — 완료
-2. [ ] 와일드카드 SSL 인증서 발급 — Cloudflare NS 위임 방식 결정, 가이드 작성 완료 (`docs/WILDCARD_SSL_SETUP.md`), VPS 적용 대기
-3. [x] nginx 설정 파일 분리 — `deploy/nginx/sites/` 로 분리 완료, VPS 적용 대기
+- [x] `syworkspace.cloud` 루트를 SyOps 포털로 변경
+- [x] Cloudflare NS 위임 + 와일드카드 SSL 발급 (`*.syworkspace.cloud`)
+- [x] nginx 설정 서비스별 파일 분리 (`deploy/nginx/sites/`)
+- [x] nginx 서비스 템플릿 와일드카드 SSL 경로 업데이트
 
-### 코드 변경
+### 백엔드 (완료)
 
-4. [x] 서비스 카탈로그 9개 확장 — `frontend/src/data/services.ts`
-5. [x] 랜딩 페이지 카테고리별 리디자인 — `frontend/src/pages/Landing.tsx`
-6. [x] 백엔드 서비스 레지스트리 리팩터링 — `backend/services/registry.py`
-7. [x] deploy.sh 서비스 추가 — `deploy/scripts/deploy.sh`
-8. [x] nginx 서비스 템플릿 와일드카드 SSL 경로로 업데이트 — `deploy/templates/nginx-service.conf`
+- [x] 서비스 레지스트리 리팩터링 (`backend/services/registry.py`)
+- [x] deploy.sh 전체 서비스 지원
 
-### 서비스 배포 순서 (development-roadmap.md 블록 순서 따름)
+### 프론트엔드 — 서비스 카탈로그 (완료)
+
+- [x] 서비스 카탈로그 9개 확장 (`frontend/src/data/services.ts`)
+- [x] 서비스 카드 카테고리별 그룹핑 + DeployBadge
+- [x] 랜딩 페이지 카테고리별 리디자인
+
+### 프론트엔드 — 포털 리디자인 (예정)
+
+- [ ] Navbar 컴포넌트 (로고 | 서비스 | 프로젝트 | 블로그 | 개발로그 | 알고리즘)
+- [ ] Landing 히어로 리디자인 (소개 + CTA 5개)
+- [ ] /services 페이지 (기존 Landing 서비스 카드 이동)
+- [ ] /projects + ProjectCard + projects.ts
+- [ ] /projects/:id 상세
+- [ ] /blog, /log, /algorithm placeholder
+- [ ] App.tsx 라우트 확장
+
+### 서비스 배포 순서 (development-roadmap.md 블록 순서)
 
 | 순서 | 서비스 | 전제 조건 |
 |------|--------|-----------|
@@ -348,13 +358,9 @@ server {
 
 ---
 
-## 변경 요약
+## 미결정 사항
 
-| 항목 | 현재 | 변경 후 |
-|------|------|---------|
-| 루트 도메인 | `drop`으로 리다이렉트 | SyOps 포털 (허브) |
-| SSL | 서브도메인별 개별 인증서 | 와일드카드 `*.syworkspace.cloud` |
-| nginx 설정 | 단일 파일 | 서비스별 파일 분리 |
-| 서비스 배포 | 수동 (서비스마다 다름) | Docker 표준 템플릿 통일 |
-| 서비스 접근 | 서브도메인 직접 접속 | 포털 허브 + 서브도메인 직접 접속 |
-| 서비스 모니터링 | SyOps에서 일부만 | 전체 Docker + systemd 통합 모니터링 |
+- 블로그 형태 (에세이 / 일상 / 자유 글쓰기)
+- 개발 로그 형태 (블로그형 / 타임라인형 / TIL형)
+- Algorithm Drill 표시 형태 (통계 / 문제 목록 / 난이도 분포)
+- 프로젝트 상세 페이지의 콘텐츠 깊이
