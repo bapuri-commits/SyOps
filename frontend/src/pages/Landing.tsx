@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
 import Footer from "../components/Footer";
 import { services } from "../data/services";
+import { projects } from "../data/projects";
 
 const liveCount = services.filter((s) => s.deployStatus === "live").length;
-const totalProjects = services.length;
+const totalProjects = projects.length;
 
 const CTA_ITEMS = [
   {
