@@ -91,7 +91,7 @@ SERVICES: list[ServiceDef] = [
         manage_unit="study",
         port=8203,
         subdomain="study",
-        enabled=False,
+        enabled=True,
     ),
     ServiceDef(
         id="aram-bot",

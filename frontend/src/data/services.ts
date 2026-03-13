@@ -29,7 +29,7 @@ export const services: ServiceInfo[] = [
     url: "https://study.syworkspace.cloud",
     icon: "🎓",
     category: "productivity",
-    deployStatus: "coming_soon",
+    deployStatus: "live",
   },
   {
     id: "voca-drill",
