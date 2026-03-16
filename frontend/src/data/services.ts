@@ -34,11 +34,11 @@ export const services: ServiceInfo[] = [
   {
     id: "voca-drill",
     name: "Voca Drill",
-    description: "SM-2 간격 반복 기반 영단어 학습. 토플/토익 대비.",
+    description: "SM-2 간격 반복 기반 영단어 학습. 토플 초록이 1,680단어 + 카드 플립.",
     url: "https://voca.syworkspace.cloud",
     icon: "📚",
     category: "productivity",
-    deployStatus: "dev",
+    deployStatus: "live",
   },
 
   // --- AI / 챗 ---
