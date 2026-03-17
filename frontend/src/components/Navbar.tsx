@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/blog", label: "블로그" },
   { to: "/log", label: "개발로그" },
   { to: "/algorithm", label: "알고리즘" },
+  { to: "/gallery", label: "갤러리", adminOnly: true },
 ];
 
 export default function Navbar() {
@@ -31,7 +32,7 @@ export default function Navbar() {
         {/* Desktop nav + auth */}
         <div className="hidden items-center gap-1 sm:flex">
           <ul className="flex items-center gap-1">
-            {NAV_ITEMS.map(({ to, label }) => (
+            {NAV_ITEMS.filter((item) => !("adminOnly" in item && item.adminOnly) || role === "admin").map(({ to, label }) => (
               <li key={to}>
                 <Link
                   to={to}
@@ -102,7 +103,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <ul className="border-t border-border-subtle px-4 pb-3 sm:hidden">
-          {NAV_ITEMS.map(({ to, label }) => (
+          {NAV_ITEMS.filter((item) => !("adminOnly" in item && item.adminOnly) || role === "admin").map(({ to, label }) => (
             <li key={to}>
               <Link
                 to={to}

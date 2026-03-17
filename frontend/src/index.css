@@ -7,6 +7,15 @@
   --color-border-subtle: #334155;
   --color-accent: #38bdf8;
   --color-accent-dim: #0ea5e9;
+
+  --color-gallery-bg: #1a1118;
+  --color-gallery-card: #2a1f28;
+  --color-gallery-card-hover: #3a2d38;
+  --color-gallery-border: #3a2d38;
+  --color-gallery-accent: #f4a0b8;
+  --color-gallery-accent-dim: #d4849c;
+  --color-gallery-text: #f5e6ec;
+  --color-gallery-text-muted: #a08090;
 }
 
 html {
