@@ -36,7 +36,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: pip install fastapi "uvicorn[standard]" httpx psutil pydantic-settings Pillow ruff
+        run: pip install -e ./backend ruff
 
       - name: Lint
         run: ruff check backend/
