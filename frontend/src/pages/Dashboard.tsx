@@ -5,6 +5,7 @@ import { useServiceHealth } from "../hooks/useServiceHealth";
 import MetricBar from "../components/dashboard/MetricBar";
 import SslCard, { type SslData } from "../components/dashboard/SslCard";
 import ServicePanel from "../components/dashboard/ServicePanel";
+import UserManagementPanel from "../components/dashboard/UserManagementPanel";
 
 interface Metrics {
   cpu: { percent: number; cores: number };
@@ -21,7 +22,7 @@ const MANAGED_SERVICES = [
 ];
 
 export default function Dashboard() {
-  const { authenticated, initializing, logout, authFetch } = useAuth();
+  const { authenticated, initializing, role, logout, authFetch } = useAuth();
   const navigate = useNavigate();
 
   const healthMap = useServiceHealth(MANAGED_SERVICES.map((s) => s.id));
@@ -140,6 +141,13 @@ export default function Dashboard() {
           ))}
         </div>
       </section>
+
+      {/* User Management (admin only) */}
+      {role === "admin" && (
+        <section className="mt-8">
+          <UserManagementPanel />
+        </section>
+      )}
 
       {/* Disk warning */}
       {metrics && metrics.disk.percent >= 80 && (

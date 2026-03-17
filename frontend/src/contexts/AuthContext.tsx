@@ -11,6 +11,8 @@ import {
 interface AuthContextType {
   authenticated: boolean;
   initializing: boolean;
+  role: string | null;
+  username: string | null;
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   authFetch: (url: string, options?: RequestInit) => Promise<Response>;
@@ -20,9 +22,24 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
+  const [username, setUsername] = useState<string | null>(null);
   const [initializing, setInitializing] = useState(true);
   const tokenRef = useRef(accessToken);
   tokenRef.current = accessToken;
+
+  const fetchUserInfo = useCallback(async (token: string) => {
+    try {
+      const res = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRole(data.role);
+        setUsername(data.username);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
     try {
@@ -33,33 +50,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (res.ok) {
         const data = await res.json();
         setAccessToken(data.access_token);
+        await fetchUserInfo(data.access_token);
         return data.access_token;
       }
     } catch { /* network error */ }
     setAccessToken(null);
+    setRole(null);
+    setUsername(null);
     return null;
-  }, []);
+  }, [fetchUserInfo]);
 
   useEffect(() => {
     refreshAccessToken().finally(() => setInitializing(false));
   }, [refreshAccessToken]);
 
-  const login = useCallback(async (username: string, password: string) => {
+  const login = useCallback(async (u: string, password: string) => {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: u, password }),
       });
       if (res.ok) {
         const data = await res.json();
         setAccessToken(data.access_token);
+        await fetchUserInfo(data.access_token);
         return true;
       }
     } catch { /* network error */ }
     return false;
-  }, []);
+  }, [fetchUserInfo]);
 
   const logout = useCallback(async () => {
     try {
@@ -69,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
     } catch { /* ignore */ }
     setAccessToken(null);
+    setRole(null);
+    setUsername(null);
   }, []);
 
   const authFetch = useCallback(
@@ -90,6 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           res = await doFetch(newToken);
         } else {
           setAccessToken(null);
+          setRole(null);
+          setUsername(null);
         }
       }
 
@@ -100,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ authenticated: !!accessToken, initializing, login, logout, authFetch }}
+      value={{ authenticated: !!accessToken, initializing, role, username, login, logout, authFetch }}
     >
       {children}
     </AuthContext.Provider>

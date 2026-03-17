@@ -49,6 +49,15 @@ class CreateUserRequest(BaseModel):
     role: str = "user"
 
 
+class UpdateUserRequest(BaseModel):
+    is_active: bool | None = None
+    role: str | None = None
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
 class UserResponse(BaseModel):
     id: int
     username: str
@@ -236,3 +245,56 @@ async def create_user(body: CreateUserRequest, _admin: User = Depends(require_ad
     await db.refresh(user)
 
     return user
+
+
+@router.get("/users", response_model=list[UserResponse])
+async def list_users(_admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(User).order_by(User.id))
+    return list(result.scalars().all())
+
+
+@router.patch("/users/{user_id}", response_model=UserResponse)
+async def update_user(
+    user_id: int,
+    body: UpdateUserRequest,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if user_id == admin.id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot modify your own account")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    if body.is_active is not None:
+        user.is_active = body.is_active
+    if body.role is not None:
+        if body.role not in ("admin", "user"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'user'")
+        user.role = body.role
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.patch("/users/{user_id}/password")
+async def reset_user_password(
+    user_id: int,
+    body: ResetPasswordRequest,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    if len(body.new_password) < 4:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 4 characters")
+
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    user.hashed_password = hash_password(body.new_password)
+    await db.commit()
+    return {"ok": True}
