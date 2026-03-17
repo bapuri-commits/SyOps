@@ -25,8 +25,10 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 REFRESH_COOKIE = "syops_refresh"
 AVAILABLE_SERVICES = [
-    {"id": "quickdrop", "name": "QuickDrop"},
-    {"id": "voca_drill", "name": "Voca Drill"},
+    {"id": "quickdrop", "name": "QuickDrop", "access": "private", "data_scope": "per_user"},
+    {"id": "voca_drill", "name": "Voca Drill", "access": "private", "data_scope": "per_user"},
+    {"id": "study", "name": "StudyHub", "access": "private", "data_scope": "shared"},
+    {"id": "news-agent", "name": "News Agent", "access": "public", "data_scope": "shared"},
 ]
 
 
@@ -82,7 +84,7 @@ def _parse_services(raw: str) -> list[str]:
         return []
 
 
-_valid_service_ids = {s["id"] for s in AVAILABLE_SERVICES}
+_valid_service_ids = {s["id"] for s in AVAILABLE_SERVICES if s.get("access") == "private"}
 
 
 def _validate_services(services: list[str]) -> None:

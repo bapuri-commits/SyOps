@@ -4,6 +4,8 @@ import { useAuth } from "../../contexts/AuthContext";
 interface ServiceDef {
   id: string;
   name: string;
+  access: "public" | "private";
+  data_scope: "shared" | "per_user";
 }
 
 interface UserInfo {
@@ -154,10 +156,13 @@ export default function UserManagementPanel() {
     );
   }
 
+  const privateServices = services.filter(s => s.access === "private");
+
   const inputClass = "w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-accent";
   const btnClass = "rounded-md border border-border-subtle px-2.5 py-1 text-xs transition-colors";
   const chipActive = "rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors bg-accent/15 text-accent border border-accent/30";
   const chipInactive = "rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors bg-surface text-slate-500 border border-border-subtle hover:border-accent/30 hover:text-accent";
+  const scopeLabel = (svc: ServiceDef) => svc.data_scope === "per_user" ? "개인" : "공용";
 
   return (
     <div className="space-y-3">
@@ -183,17 +188,17 @@ export default function UserManagementPanel() {
             <option value="user">일반 사용자</option>
             <option value="admin">관리자</option>
           </select>
-          {services.length > 0 && (
+          {privateServices.length > 0 && (
             <div>
               <p className="mb-1.5 text-xs text-slate-400">서비스 권한</p>
               <div className="flex flex-wrap gap-2">
-                {services.map(svc => (
+                {privateServices.map(svc => (
                   <span
                     key={svc.id}
                     onClick={() => toggleNewService(svc.id)}
                     className={newServices.includes(svc.id) ? chipActive : chipInactive}
                   >
-                    {svc.name}
+                    {svc.name} <span className="opacity-60">[{scopeLabel(svc)}]</span>
                   </span>
                 ))}
               </div>
@@ -237,22 +242,22 @@ export default function UserManagementPanel() {
               )}
             </div>
 
-            {/* Service permissions */}
-            {user.role !== "admin" && services.length > 0 && (
+            {/* Service permissions (private only) */}
+            {user.role !== "admin" && privateServices.length > 0 && (
               <div className="mt-2.5 flex flex-wrap gap-1.5">
-                {services.map(svc => (
+                {privateServices.map(svc => (
                   <span
                     key={svc.id}
                     onClick={user.username !== currentUsername ? () => toggleService(user, svc.id) : undefined}
                     className={user.allowed_services.includes(svc.id) ? chipActive : chipInactive}
                     style={user.username === currentUsername ? { cursor: "default" } : undefined}
                   >
-                    {svc.name}
+                    {svc.name} <span className="opacity-60">[{scopeLabel(svc)}]</span>
                   </span>
                 ))}
               </div>
             )}
-            {user.role === "admin" && services.length > 0 && (
+            {user.role === "admin" && privateServices.length > 0 && (
               <p className="mt-2 text-[11px] text-slate-500">관리자 — 모든 서비스 접근 가능</p>
             )}
 

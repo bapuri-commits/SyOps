@@ -29,7 +29,7 @@ export default function Login() {
     if (redirect) {
       window.location.href = redirect;
     } else {
-      navigate("/dashboard", { replace: true });
+      navigate("/", { replace: true });
     }
   }, [authenticated, navigate, redirect]);
 
@@ -43,7 +43,7 @@ export default function Login() {
       if (redirect) {
         window.location.href = redirect;
       } else {
-        navigate("/dashboard", { replace: true });
+        navigate("/", { replace: true });
       }
     } else {
       setError(true);
@@ -60,7 +60,7 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-white">
             Sy<span className="text-accent">Ops</span>
           </h1>
-          <p className="mt-1 text-sm text-slate-400">관리 대시보드 로그인</p>
+          <p className="mt-1 text-sm text-slate-400">로그인</p>
         </div>
 
         <div className="space-y-4">
