@@ -27,7 +27,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
-app.include_router(gallery.router)
+## app.include_router(gallery.router)  # 갤러리 비활성화
 app.include_router(health.router)
 app.include_router(metrics.router)
 app.include_router(services.router)

@@ -8,7 +8,7 @@ const NAV_ITEMS = [
   { to: "/blog", label: "블로그" },
   { to: "/log", label: "개발로그" },
   { to: "/algorithm", label: "알고리즘" },
-  { to: "/gallery", label: "갤러리", adminOnly: true },
+  // { to: "/gallery", label: "갤러리", adminOnly: true },
 ];
 
 export default function Navbar() {

@@ -7,7 +7,6 @@ import ProjectDetail from "./pages/ProjectDetail";
 import Blog from "./pages/Blog";
 import DevLog from "./pages/DevLog";
 import AlgorithmDrill from "./pages/AlgorithmDrill";
-import Gallery from "./pages/Gallery";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import BotDashboard from "./pages/BotDashboard";
@@ -24,8 +23,6 @@ export default function App() {
           <Route path="/blog" element={<Blog />} />
           <Route path="/log" element={<DevLog />} />
           <Route path="/algorithm" element={<AlgorithmDrill />} />
-          <Route path="/gallery" element={<Gallery />} />
-          <Route path="/gallery/*" element={<Gallery />} />
           <Route path="/login" element={<Login />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/dashboard/bottycoon" element={<BotDashboard />} />
