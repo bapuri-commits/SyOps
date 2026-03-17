@@ -1,21 +1,29 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 
+interface ServiceDef {
+  id: string;
+  name: string;
+}
+
 interface UserInfo {
   id: number;
   username: string;
   role: string;
   is_active: boolean;
+  allowed_services: string[];
 }
 
 export default function UserManagementPanel() {
   const { authFetch, username: currentUsername } = useAuth();
   const [users, setUsers] = useState<UserInfo[]>([]);
+  const [services, setServices] = useState<ServiceDef[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newRole, setNewRole] = useState("user");
+  const [newServices, setNewServices] = useState<string[]>([]);
   const [createError, setCreateError] = useState("");
   const [resetTarget, setResetTarget] = useState<number | null>(null);
   const [resetPw, setResetPw] = useState("");
@@ -29,7 +37,17 @@ export default function UserManagementPanel() {
     setLoading(false);
   }, [authFetch]);
 
-  useEffect(() => { fetchUsers(); }, [fetchUsers]);
+  const fetchServices = useCallback(async () => {
+    try {
+      const res = await authFetch("/api/auth/services");
+      if (res.ok) {
+        const data = await res.json();
+        setServices(data.services);
+      }
+    } catch { /* ignore */ }
+  }, [authFetch]);
+
+  useEffect(() => { fetchUsers(); fetchServices(); }, [fetchUsers, fetchServices]);
 
   function showMsg(msg: string) {
     setMessage(msg);
@@ -46,13 +64,19 @@ export default function UserManagementPanel() {
       const res = await authFetch("/api/auth/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: newUsername.trim(), password: newPassword, role: newRole }),
+        body: JSON.stringify({
+          username: newUsername.trim(),
+          password: newPassword,
+          role: newRole,
+          allowed_services: newServices,
+        }),
       });
       if (res.ok) {
         setShowCreate(false);
         setNewUsername("");
         setNewPassword("");
         setNewRole("user");
+        setNewServices([]);
         showMsg("계정 생성 완료");
         fetchUsers();
       } else {
@@ -82,6 +106,28 @@ export default function UserManagementPanel() {
     }
   }
 
+  async function toggleService(user: UserInfo, serviceId: string) {
+    const has = user.allowed_services.includes(serviceId);
+    const updated = has
+      ? user.allowed_services.filter(s => s !== serviceId)
+      : [...user.allowed_services, serviceId];
+    try {
+      const res = await authFetch(`/api/auth/users/${user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowed_services: updated }),
+      });
+      if (res.ok) {
+        showMsg(`${user.username} 서비스 권한 변경`);
+        fetchUsers();
+      } else {
+        showMsg("권한 변경 실패");
+      }
+    } catch {
+      showMsg("연결 실패");
+    }
+  }
+
   async function handleResetPassword() {
     if (!resetTarget || resetPw.length < 4) return;
     try {
@@ -102,12 +148,19 @@ export default function UserManagementPanel() {
     }
   }
 
+  function toggleNewService(serviceId: string) {
+    setNewServices(prev =>
+      prev.includes(serviceId) ? prev.filter(s => s !== serviceId) : [...prev, serviceId]
+    );
+  }
+
   const inputClass = "w-full rounded-lg border border-border-subtle bg-surface px-3 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-accent";
   const btnClass = "rounded-md border border-border-subtle px-2.5 py-1 text-xs transition-colors";
+  const chipActive = "rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors bg-accent/15 text-accent border border-accent/30";
+  const chipInactive = "rounded-md px-2 py-1 text-[11px] font-medium cursor-pointer transition-colors bg-surface text-slate-500 border border-border-subtle hover:border-accent/30 hover:text-accent";
 
   return (
     <div className="space-y-3">
-      {/* Header + Create */}
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-slate-300">계정 관리</h2>
         <button
@@ -122,7 +175,6 @@ export default function UserManagementPanel() {
         <div className="rounded-lg bg-emerald-400/10 px-3 py-2 text-xs text-emerald-400">{message}</div>
       )}
 
-      {/* Create form */}
       {showCreate && (
         <div className="rounded-xl border border-border-subtle bg-surface-card p-4 space-y-3">
           <input type="text" placeholder="아이디" value={newUsername} onChange={e => setNewUsername(e.target.value)} className={inputClass} />
@@ -131,6 +183,22 @@ export default function UserManagementPanel() {
             <option value="user">일반 사용자</option>
             <option value="admin">관리자</option>
           </select>
+          {services.length > 0 && (
+            <div>
+              <p className="mb-1.5 text-xs text-slate-400">서비스 권한</p>
+              <div className="flex flex-wrap gap-2">
+                {services.map(svc => (
+                  <span
+                    key={svc.id}
+                    onClick={() => toggleNewService(svc.id)}
+                    className={newServices.includes(svc.id) ? chipActive : chipInactive}
+                  >
+                    {svc.name}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
           {createError && <p className="text-xs text-red-400">{createError}</p>}
           <button onClick={handleCreate} className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-surface hover:opacity-90">
             생성
@@ -138,7 +206,6 @@ export default function UserManagementPanel() {
         </div>
       )}
 
-      {/* User list */}
       {loading ? (
         <div className="h-20 animate-pulse rounded-xl border border-border-subtle bg-surface-card" />
       ) : (
@@ -169,6 +236,25 @@ export default function UserManagementPanel() {
                 </div>
               )}
             </div>
+
+            {/* Service permissions */}
+            {user.role !== "admin" && services.length > 0 && (
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                {services.map(svc => (
+                  <span
+                    key={svc.id}
+                    onClick={user.username !== currentUsername ? () => toggleService(user, svc.id) : undefined}
+                    className={user.allowed_services.includes(svc.id) ? chipActive : chipInactive}
+                    style={user.username === currentUsername ? { cursor: "default" } : undefined}
+                  >
+                    {svc.name}
+                  </span>
+                ))}
+              </div>
+            )}
+            {user.role === "admin" && services.length > 0 && (
+              <p className="mt-2 text-[11px] text-slate-500">관리자 — 모든 서비스 접근 가능</p>
+            )}
 
             {resetTarget === user.id && (
               <div className="mt-3 flex gap-2">

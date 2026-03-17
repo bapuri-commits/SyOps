@@ -26,9 +26,16 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_access_token(user_id: int, role: str, username: str) -> str:
+def create_access_token(user_id: int, role: str, username: str, allowed_services: list[str] | None = None) -> str:
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": str(user_id), "role": role, "username": username, "exp": expire, "type": "access"}
+    payload = {
+        "sub": str(user_id),
+        "role": role,
+        "username": username,
+        "services": allowed_services or [],
+        "exp": expire,
+        "type": "access",
+    }
     return jwt.encode(payload, settings.syops_secret_key, algorithm=ALGORITHM)
 
 

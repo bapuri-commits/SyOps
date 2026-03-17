@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 
@@ -23,6 +24,10 @@ from ..models.user import RefreshToken, User
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 REFRESH_COOKIE = "syops_refresh"
+AVAILABLE_SERVICES = [
+    {"id": "quickdrop", "name": "QuickDrop"},
+    {"id": "voca_drill", "name": "Voca Drill"},
+]
 
 
 # ── Request / Response schemas ──
@@ -47,11 +52,13 @@ class CreateUserRequest(BaseModel):
     username: str
     password: str
     role: str = "user"
+    allowed_services: list[str] = []
 
 
 class UpdateUserRequest(BaseModel):
     is_active: bool | None = None
     role: str | None = None
+    allowed_services: list[str] | None = None
 
 
 class ResetPasswordRequest(BaseModel):
@@ -63,8 +70,38 @@ class UserResponse(BaseModel):
     username: str
     role: str
     is_active: bool
+    allowed_services: list[str] = []
 
     model_config = {"from_attributes": True}
+
+
+def _parse_services(raw: str) -> list[str]:
+    try:
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+
+
+_valid_service_ids = {s["id"] for s in AVAILABLE_SERVICES}
+
+
+def _validate_services(services: list[str]) -> None:
+    invalid = [s for s in services if s not in _valid_service_ids]
+    if invalid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid service(s): {', '.join(invalid)}",
+        )
+
+
+def _to_user_response(user: User) -> UserResponse:
+    return UserResponse(
+        id=user.id,
+        username=user.username,
+        role=user.role,
+        is_active=user.is_active,
+        allowed_services=_parse_services(user.allowed_services),
+    )
 
 
 # ── Helpers ──
@@ -135,7 +172,8 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
     db.add(refresh_row)
     await db.commit()
 
-    access = create_access_token(user.id, user.role, user.username)
+    services = _parse_services(user.allowed_services)
+    access = create_access_token(user.id, user.role, user.username, services)
     _set_refresh_cookie(response, raw_refresh)
     _set_access_cookie(response, access)
 
@@ -180,7 +218,8 @@ async def refresh(
     db.add(new_rt)
     await db.commit()
 
-    access = create_access_token(user.id, user.role, user.username)
+    services = _parse_services(user.allowed_services)
+    access = create_access_token(user.id, user.role, user.username, services)
     _set_refresh_cookie(response, new_raw)
     _set_access_cookie(response, access)
 
@@ -207,7 +246,7 @@ async def logout(
 
 @router.get("/me", response_model=UserResponse)
 async def me(user: User = Depends(get_current_user)):
-    return user
+    return _to_user_response(user)
 
 
 @router.get("/users/{username}", response_model=UserResponse)
@@ -220,7 +259,7 @@ async def get_user_by_username(
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
-    return user
+    return _to_user_response(user)
 
 
 @router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -231,6 +270,8 @@ async def create_user(body: CreateUserRequest, _admin: User = Depends(require_ad
     if body.role not in ("admin", "user"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'user'")
 
+    _validate_services(body.allowed_services)
+
     existing = await db.execute(select(User).where(User.username == body.username))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Username already exists")
@@ -239,18 +280,24 @@ async def create_user(body: CreateUserRequest, _admin: User = Depends(require_ad
         username=body.username,
         hashed_password=hash_password(body.password),
         role=body.role,
+        allowed_services=json.dumps(body.allowed_services),
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
 
-    return user
+    return _to_user_response(user)
+
+
+@router.get("/services")
+async def available_services():
+    return {"services": AVAILABLE_SERVICES}
 
 
 @router.get("/users", response_model=list[UserResponse])
 async def list_users(_admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).order_by(User.id))
-    return list(result.scalars().all())
+    return [_to_user_response(u) for u in result.scalars().all()]
 
 
 @router.patch("/users/{user_id}", response_model=UserResponse)
@@ -274,10 +321,13 @@ async def update_user(
         if body.role not in ("admin", "user"):
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'user'")
         user.role = body.role
+    if body.allowed_services is not None:
+        _validate_services(body.allowed_services)
+        user.allowed_services = json.dumps(body.allowed_services)
 
     await db.commit()
     await db.refresh(user)
-    return user
+    return _to_user_response(user)
 
 
 @router.patch("/users/{user_id}/password")
