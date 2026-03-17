@@ -34,6 +34,8 @@ export default function Gallery() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (initializing || !authenticated || role !== "admin") return;
+
     let cancelled = false;
     setLoading(true);
     setError(null);
@@ -56,7 +58,7 @@ export default function Gallery() {
       });
 
     return () => { cancelled = true; };
-  }, [path, authFetch]);
+  }, [path, authFetch, initializing, authenticated, role]);
 
   const thumbSrc = useCallback(
     (name: string) => {

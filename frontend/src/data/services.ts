@@ -21,16 +21,6 @@ export const services: ServiceInfo[] = [
     deployStatus: "live",
   },
 
-  {
-    id: "gallery",
-    name: "Gallery",
-    description: "비공개 사진/영상 갤러리 뷰어. 앨범 탐색, 썸네일, 모바일 최적화.",
-    url: "https://syworkspace.cloud/gallery",
-    icon: "🖼️",
-    category: "utility",
-    deployStatus: "live",
-  },
-
   // --- 생산성 ---
   {
     id: "study",
