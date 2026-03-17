@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 import jwt
-from fastapi import Depends, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .config import settings
 from .database import get_db
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
 
 ALGORITHM = "HS256"
 
@@ -57,12 +57,17 @@ def decode_access_token(token: str) -> dict:
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
+    syops_token: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
     from ..models.user import User
 
-    payload = decode_access_token(token)
+    raw = token or syops_token
+    if raw is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    payload = decode_access_token(raw)
     user_id = int(payload["sub"])
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -74,10 +79,11 @@ async def get_current_user(
 
 
 async def require_admin(
-    token: str = Depends(oauth2_scheme),
+    token: str | None = Depends(oauth2_scheme),
+    syops_token: str | None = Cookie(default=None),
     db: AsyncSession = Depends(get_db),
 ):
-    user = await get_current_user(token, db)
+    user = await get_current_user(token, syops_token, db)
     if user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return user

@@ -24,7 +24,7 @@ interface Capabilities {
 const POLL_MS = 15_000;
 
 export default function BotDashboard() {
-  const { authenticated, initializing, authFetch } = useAuth();
+  const { authenticated, initializing, role, authFetch } = useAuth();
   const navigate = useNavigate();
 
   const [health, setHealth] = useState<BotHealth | null>(null);
@@ -57,11 +57,15 @@ export default function BotDashboard() {
       navigate("/login", { replace: true });
       return;
     }
+    if (role !== "admin") {
+      navigate("/", { replace: true });
+      return;
+    }
     fetchHealth();
     fetchCaps();
     const timer = setInterval(fetchHealth, POLL_MS);
     return () => clearInterval(timer);
-  }, [authenticated, initializing, navigate, fetchHealth, fetchCaps]);
+  }, [authenticated, initializing, role, navigate, fetchHealth, fetchCaps]);
 
   const offline = health?.status === "offline" || !health;
 

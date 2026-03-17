@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const tokenRef = useRef(accessToken);
   tokenRef.current = accessToken;
+  const refreshPromiseRef = useRef<Promise<string | null> | null>(null);
 
   const fetchUserInfo = useCallback(async (token: string) => {
     try {
@@ -42,22 +43,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshAccessToken = useCallback(async (): Promise<string | null> => {
-    try {
-      const res = await fetch("/api/auth/refresh", {
-        method: "POST",
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAccessToken(data.access_token);
-        await fetchUserInfo(data.access_token);
-        return data.access_token;
-      }
-    } catch { /* network error */ }
-    setAccessToken(null);
-    setRole(null);
-    setUsername(null);
-    return null;
+    if (refreshPromiseRef.current) return refreshPromiseRef.current;
+    const promise = (async () => {
+      try {
+        const res = await fetch("/api/auth/refresh", {
+          method: "POST",
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAccessToken(data.access_token);
+          await fetchUserInfo(data.access_token);
+          return data.access_token;
+        }
+      } catch { /* network error */ }
+      setAccessToken(null);
+      setRole(null);
+      setUsername(null);
+      return null;
+    })();
+    refreshPromiseRef.current = promise;
+    promise.finally(() => { refreshPromiseRef.current = null; });
+    return promise;
   }, [fetchUserInfo]);
 
   useEffect(() => {

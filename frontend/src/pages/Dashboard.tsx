@@ -42,10 +42,14 @@ export default function Dashboard() {
       navigate("/login", { replace: true });
       return;
     }
+    if (role !== "admin") {
+      navigate("/", { replace: true });
+      return;
+    }
     fetchMetrics();
     const timer = setInterval(fetchMetrics, METRIC_POLL_MS);
     return () => clearInterval(timer);
-  }, [authenticated, initializing, navigate, fetchMetrics]);
+  }, [authenticated, initializing, role, navigate, fetchMetrics]);
 
   useEffect(() => {
     if (initializing || !authenticated) return;

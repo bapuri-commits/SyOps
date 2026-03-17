@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ..core.auth import get_current_user
+from ..core.auth import require_admin
 from ..services.registry import get_manageable
 from ..services.systemd import get_logs, restart_service
 
 router = APIRouter(
     prefix="/api/services",
     tags=["services"],
-    dependencies=[Depends(get_current_user)],
+    dependencies=[Depends(require_admin)],
 )
 
 

@@ -54,7 +54,7 @@ async def _systemd_restart(service_id: str, unit: str) -> dict:
         return {"service": service_id, "success": False, "detail": "Windows — systemctl 사용 불가"}
 
     proc = await asyncio.create_subprocess_exec(
-        "systemctl", "restart", unit,
+        "sudo", "systemctl", "restart", unit,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )

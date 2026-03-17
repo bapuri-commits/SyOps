@@ -6,7 +6,7 @@ from hashlib import sha256
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core.auth import (
@@ -20,16 +20,12 @@ from ..core.auth import (
 from ..core.config import settings
 from ..core.database import get_db
 from ..models.user import RefreshToken, User
+from ..services.registry import get_auth_services, get_private_service_ids
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 REFRESH_COOKIE = "syops_refresh"
-AVAILABLE_SERVICES = [
-    {"id": "quickdrop", "name": "QuickDrop", "access": "private", "data_scope": "per_user"},
-    {"id": "voca_drill", "name": "Voca Drill", "access": "private", "data_scope": "per_user"},
-    {"id": "study", "name": "StudyHub", "access": "private", "data_scope": "shared"},
-    {"id": "news-agent", "name": "News Agent", "access": "public", "data_scope": "shared"},
-]
+_TIMING_DUMMY_HASH = hash_password("timing-attack-constant-work")
 
 
 # ── Request / Response schemas ──
@@ -84,7 +80,7 @@ def _parse_services(raw: str) -> list[str]:
         return []
 
 
-_valid_service_ids = {s["id"] for s in AVAILABLE_SERVICES if s.get("access") == "private"}
+_valid_service_ids = get_private_service_ids()
 
 
 def _validate_services(services: list[str]) -> None:
@@ -157,7 +153,11 @@ async def login(body: LoginRequest, response: Response, db: AsyncSession = Depen
     result = await db.execute(select(User).where(User.username == body.username))
     user = result.scalar_one_or_none()
 
-    if user is None or not verify_password(body.password, user.hashed_password):
+    if user is None:
+        verify_password(body.password, _TIMING_DUMMY_HASH)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+    if not verify_password(body.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
     if not user.is_active:
@@ -192,20 +192,25 @@ async def refresh(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No refresh token")
 
     token_hash = _hash_token(syops_refresh)
-    result = await db.execute(
-        select(RefreshToken)
-        .where(RefreshToken.token_hash == token_hash, RefreshToken.revoked == False)  # noqa: E712
-    )
-    rt = result.scalar_one_or_none()
 
-    if rt is None or rt.expires_at < datetime.now(timezone.utc):
+    # Atomic revoke: prevents TOCTOU race on concurrent refresh requests
+    revoke_result = await db.execute(
+        update(RefreshToken)
+        .where(
+            RefreshToken.token_hash == token_hash,
+            RefreshToken.revoked == False,  # noqa: E712
+            RefreshToken.expires_at >= datetime.now(timezone.utc),
+        )
+        .values(revoked=True)
+        .returning(RefreshToken.user_id)
+    )
+    row = revoke_result.first()
+
+    if row is None:
         _clear_refresh_cookie(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token")
 
-    # Refresh Token Rotation
-    rt.revoked = True
-
-    user_result = await db.execute(select(User).where(User.id == rt.user_id))
+    user_result = await db.execute(select(User).where(User.id == row.user_id))
     user = user_result.scalar_one_or_none()
     if user is None or not user.is_active:
         _clear_refresh_cookie(response)
@@ -266,8 +271,8 @@ async def get_user_by_username(
 
 @router.post("/users", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(body: CreateUserRequest, _admin: User = Depends(require_admin), db: AsyncSession = Depends(get_db)):
-    if len(body.password) < 4:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 4 characters")
+    if len(body.password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters")
 
     if body.role not in ("admin", "user"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role must be 'admin' or 'user'")
@@ -293,7 +298,7 @@ async def create_user(body: CreateUserRequest, _admin: User = Depends(require_ad
 
 @router.get("/services")
 async def available_services():
-    return {"services": AVAILABLE_SERVICES}
+    return {"services": get_auth_services()}
 
 
 @router.get("/users", response_model=list[UserResponse])
@@ -339,8 +344,8 @@ async def reset_user_password(
     _admin: User = Depends(require_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    if len(body.new_password) < 4:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 4 characters")
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Password must be at least 8 characters")
 
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()

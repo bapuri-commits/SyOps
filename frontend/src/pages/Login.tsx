@@ -8,7 +8,7 @@ function getValidRedirect(params: URLSearchParams): string | null {
   try {
     const url = new URL(raw);
     if (url.hostname.endsWith(".syworkspace.cloud") || url.hostname === "syworkspace.cloud") {
-      return raw;
+      return url.toString();
     }
   } catch { /* invalid URL */ }
   return null;

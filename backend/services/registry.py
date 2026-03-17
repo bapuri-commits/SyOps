@@ -33,6 +33,8 @@ class ServiceDef:
     port: int = 0
     subdomain: str = ""
     enabled: bool = True
+    access: str = "public"
+    data_scope: str = "shared"
 
 
 SERVICES: list[ServiceDef] = [
@@ -45,6 +47,8 @@ SERVICES: list[ServiceDef] = [
         manage_unit="quickdrop",
         port=8200,
         subdomain="drop",
+        access="private",
+        data_scope="per_user",
     ),
     ServiceDef(
         id="bottycoon-bot",
@@ -72,7 +76,7 @@ SERVICES: list[ServiceDef] = [
     ),
     # --- 아래는 배포 후 enabled=True로 전환 ---
     ServiceDef(
-        id="voca-drill",
+        id="voca_drill",
         name="Voca Drill",
         run_type=RunType.DOCKER,
         health_check=HealthCheckType.HTTP,
@@ -81,6 +85,8 @@ SERVICES: list[ServiceDef] = [
         port=8500,
         subdomain="voca",
         enabled=True,
+        access="private",
+        data_scope="per_user",
     ),
     ServiceDef(
         id="study",
@@ -92,6 +98,8 @@ SERVICES: list[ServiceDef] = [
         port=8203,
         subdomain="study",
         enabled=True,
+        access="private",
+        data_scope="shared",
     ),
     ServiceDef(
         id="aram-bot",
@@ -133,3 +141,17 @@ def get_manageable() -> dict[str, ServiceDef]:
         for s in SERVICES
         if s.enabled and s.run_type in (RunType.DOCKER, RunType.SYSTEMD)
     }
+
+
+def get_auth_services() -> list[dict]:
+    """인증 시스템에서 사용하는 서비스 목록. AVAILABLE_SERVICES 대체."""
+    return [
+        {"id": s.id, "name": s.name, "access": s.access, "data_scope": s.data_scope}
+        for s in SERVICES
+        if s.enabled and s.run_type != RunType.SYSTEMD
+    ]
+
+
+def get_private_service_ids() -> set[str]:
+    """접근 권한 관리가 필요한 private 서비스 ID 집합."""
+    return {s.id for s in SERVICES if s.enabled and s.access == "private"}
