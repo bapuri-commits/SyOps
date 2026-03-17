@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .core.database import close_db, init_db
-from .routers import auth, bot_proxy, gallery, health, metrics, services, ssl
+from .routers import auth, bot_proxy, health, metrics, services, ssl  # noqa: gallery 비활성화
 from .services.health import close_client
 
 
