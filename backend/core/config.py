@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     database_url: str = _default_db
 
     # Gallery
-    gallery_media_dir: str = "/opt/data/gallery"
+    gallery_media_dir: str = "/opt/data/the-viewer"
     gallery_thumb_size: int = 400
 
     # Services
